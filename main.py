@@ -1,15 +1,17 @@
 import socket
 import binascii
 import traceback
+import socket
+import ssl
 
 from avl import *
 
-server_ip  = "api.raad3.righno.com"
-# server_ip  = "80.253.141.222"
+server_ip  = "172.16.21.11"
+server_port = 8443
 
-server_port = 5027
-imei = "860103061226958"
 
+imei = "000019249153409"
+# imei = "000019249152872"
 
 IGNITION = 239
 MOVEMENT = 240
@@ -30,19 +32,11 @@ TEMPERATURE = 53
 JAMMING = 249
 
 def convert_imei(imei:str) ->bytearray:
-    # Ensure that the IMEI is a valid 15-digit number
-
-
-    # Calculate the IMEI length in bytes
     imei_length = len(imei)
-
-    # Convert the IMEI to the desired format
     imei_hex = imei.encode().hex()
-
-    # Create the final formatted string
     out = bytearray();
     out.append(0);
-    out.append(0xf);
+    out.append(imei_length);
     out.extend(imei.encode('utf-8'))
 
     return out
@@ -91,107 +85,128 @@ avl_data.priority = Priority_t.HIGH
 #
 
 # Create a socket object
-client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-try:
-    # Connect to the server
-    client_socket.connect((server_ip, server_port))
-    print("Connected to the server.")
+# Create a default SSL context
+context = ssl.create_default_context()
+context.check_hostname = False
+context.verify_mode = ssl.CERT_NONE
+# Server details
+host = server_ip  
+port = server_port           
+# Create a raw socket
+with socket.create_connection((host, port)) as raw_socket:
+    # Wrap the socket with SSL/TLS
+    with context.wrap_socket(raw_socket, server_hostname=host) as client_socket:
 
-    # # Send data to the server
-    # message = "Hello, server!"
-    client_socket.send(formatted_imei)
+        print(f"Connected to {host}:{port} with {client_socket.version()}")
+        try:
+            # Connect to the server
+            # client_socket.connect((server_ip, server_port))
+            # print("Connected to the server.")
 
-    # # Receive data from the server
-    
-    data = client_socket.recv(1024)
-    print(f"Received from server: ",binascii.hexlify(data,sep=" ").decode('utf-8').upper())
+            # # Send data to the server
+            # message = "Hello, server!"
+            client_socket.send(formatted_imei)
 
-    val = True
-    cc = 0;
-    xx = 30
-        # # Receive data from the server
-    for x in coordinates[95:]:
-        # print(x)
-        io = Io_Element_t();
-        avl_data  = Avl_Data_t(gps=gps_data,io=io)
-        avl_data.priority = Priority_t.HIGH
+            # # Receive data from the server
+            
+            data = client_socket.recv(1024)
+            print(f"Received from server: ",binascii.hexlify(data,sep=" ").decode('utf-8').upper())
 
-        gps_data.latitude = x.lat
-        gps_data.longitude = x.lon
-        gps_data.speed = int(x.speed)
-        # gps_data.speed = 0
-        # avl_data.timestamp =int(x.timestamp.timestamp() * 1000);
-        avl_data.timestamp = get_unix_time_difference_in_milliseconds()
-        gps_data.angle = int(x.course);
-        gps_data.satellites = 15
-        gps_data.altitude = 1040
+            val = True
+            cc = 0;
+            xx = 30
+                # # Receive data from the server
+            for x in coordinates[95:]:
+                # print(x)
+                io = Io_Element_t();
+                avl_data  = Avl_Data_t(gps=gps_data,io=io)
+                avl_data.priority = Priority_t.HIGH
 
-        # gps_data.angle = int(0);
-        # gps_data.satellites = int(0)
-        # gps_data.altitude = int(0)
-        # gps_data.latitude = int(0)
-        # gps_data.longitude = int(0)
-        # gps_data.speed = int(0);
-        # io.avl_add_n2(66,12000);
-        # io.avl_add_n2(67,13000)
+                gps_data.latitude = x.lat
+                gps_data.longitude = x.lon
+                gps_data.speed = int(x.speed)
+                # gps_data.speed = 0
+                # avl_data.timestamp =int(x.timestamp.timestamp() * 1000);
+                avl_data.timestamp = get_unix_time_difference_in_milliseconds()
+                gps_data.angle = int(x.course);
+                gps_data.satellites = 15
+                gps_data.altitude = 1040
+
+                # gps_data.angle = int(0);
+                # gps_data.satellites = int(0)
+                # gps_data.altitude = int(0)
+                # gps_data.latitude = int(0)
+                # gps_data.longitude = int(0)
+                # gps_data.speed = int(0);
+                # io.avl_add_n2(66,12000);
+                # io.avl_add_n2(67,13000)
+                
+                val  = not val;
+            
+
+                xx = xx - 1
+                # io.avl_add_n1(NETWORK_TYPE, 1);
+                
+                # io.avl_add_n2(ANALOG_INPUT_1,300);
+                # io.avl_add_n2(BATTERY_VOL, 12000);     
+                
+                io.avl_add_n2(EXTERNAL_VOL, 10000);           
+                io.avl_add_n2(HDOP, 300);
+                io.avl_add_n2(PDOP, 300);
+                io.avl_add_n1(GSM_SIGNAL, 5); 
+                io.avl_add_n1(200, 3);
+                io.avl_add_n1(IGNITION, 0);
+                io.avl_add_n1(DIGITAL_INPUT_1, 1);
+                io.avl_add_n1(DIGITAL_OUTPUT_1, 0);
+                io.avl_add_n2(BATTERY_PERCENT, 18);
+                io.avl_add_n1(JAMMING, 1); 
+                io.avl_add_n1(PITCH, 5);
         
-        val  = not val;
-       
-
-        xx = xx - 1
-        # io.avl_add_n1(NETWORK_TYPE, 1);
-        
-        # io.avl_add_n2(ANALOG_INPUT_1,300);
-        # io.avl_add_n2(BATTERY_VOL, 12000);     
-         
-        # io.avl_add_n2(EXTERNAL_VOL, 10000);           
-        # io.avl_add_n2(HDOP, 300);
-        # io.avl_add_n2(PDOP, 300);
-        # io.avl_add_n1(GSM_SIGNAL, 4); 
-        # io.avl_add_n1(200, 1);
-        # # io.avl_add_n1(JAMMING, 1);  
-        
-        # io.avl_add_n1(GNSS_STATUS, 3);
-        # io.avl_add_n1(UNPLUG_SIGNAL,0); 
-        if cc >= 10 and cc < 20:
-            # io.avl_add_n1(PITCH, 16);
-            io.avl_add_n1(MOVEMENT, 1);
-            io.avl_add_n1(IGNITION, 1);
-            print("MOVEMENT 0")
-            # io.avl_add_n1(DIGITAL_INPUT_1, 0);
-            # io.avl_add_n1(DIGITAL_OUTPUT_1, 0);
-            io.avl_add_n2(BATTERY_PERCENT, 4);
-            # io.avl_add_n1(JAMMING, 1);
-        else :
-            # io.avl_add_n1(PITCH, 5);
-            io.avl_add_n1(MOVEMENT, 1);
-            io.avl_add_n1(IGNITION, 1);
-            # io.avl_add_n1(DIGITAL_INPUT_1, 1);
-            # io.avl_add_n1(DIGITAL_OUTPUT_1, 1);
-            io.avl_add_n2(BATTERY_PERCENT, 18);
-        cc += 1
-        
-        # io.avl_add_n1(TEMPERATURE, 30);
+                
+                io.avl_add_n1(GNSS_STATUS,1);
+                io.avl_add_n1(UNPLUG_SIGNAL,0); 
+                # if cc >= 10 and cc < 20:
+                #     io.avl_add_n1(PITCH, 16);
+                #     io.avl_add_n1(MOVEMENT, 0);
+                #     # io.avl_add_n1(IGNITION, 1);
+                #     # print("MOVEMENT 0")
+                #     # io.avl_add_n1(DIGITAL_INPUT_1, 0);
+                #     # io.avl_add_n1(DIGITAL_OUTPUT_1, 0);
+                #     # io.avl_add_n2(BATTERY_PERCENT, 4);
+                #     # io.avl_add_n1(JAMMING, 1);
+                #     io.avl_add_n1(UNPLUG_SIGNAL,0);
+                # else :
+                #     io.avl_add_n1(JAMMING, 0);
+                #     io.avl_add_n1(UNPLUG_SIGNAL,1);
+                #     io.avl_add_n1(PITCH, 5);
+                #     io.avl_add_n1(MOVEMENT, 1);
+                #     # io.avl_add_n1(IGNITION, 0);
+                #     # io.avl_add_n1(DIGITAL_INPUT_1, 1);
+                #     # io.avl_add_n1(DIGITAL_OUTPUT_1, 1);
+                #     # io.avl_add_n2(BATTERY_PERCENT, 18);
+                cc += 1
+                
+                io.avl_add_n1(TEMPERATURE, 30);
 
 
-        io = Io_Element_t();
+                io = Io_Element_t();
 
-        print(avl_data.timestamp)
-        client_socket.send(avl_data.serialize())
-        print(binascii.hexlify(avl_data.serialize(),sep=" ").decode('utf-8').upper())
-        
-        data = client_socket.recv(1024)
-        print(f"Received from server: ",binascii.hexlify(data,sep=" ").decode('utf-8').upper())
-        time.sleep(1);
-    
+                print(avl_data.timestamp)
+                client_socket.send(avl_data.serialize())
+                print(binascii.hexlify(avl_data.serialize(),sep=" ").decode('utf-8').upper())
+                
+                data = client_socket.recv(1024)
+                print(f"Received from server: ",binascii.hexlify(data,sep=" ").decode('utf-8').upper())
+                time.sleep(1);
+            
 
-except ConnectionRefusedError:
-    print("Connection to the server was refused.")
-except Exception as e:
-    traceback.print_exc()
-    print(f"An error occurred: {e}")
-finally:
-    # Close the socket
-    client_socket.close()
-    print("Socket closed.")
+        except ConnectionRefusedError:
+            print("Connection to the server was refused.")
+        except Exception as e:
+            traceback.print_exc()
+            print(f"An error occurred: {e}")
+        finally:
+            # Close the socket
+            client_socket.close()
+            print("Socket closed.")
