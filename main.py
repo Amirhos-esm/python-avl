@@ -6,9 +6,9 @@ import ssl
 
 from avl import *
 
-server_ip  = "172.16.21.11"
+server_ip  = "raadgps.ir"
 server_port = 8443
-
+SIMULATE_DEVICE_CIPHER_SUIT = True
 
 imei = "000019249153409"
 # imei = "000019249152872"
@@ -90,6 +90,17 @@ avl_data.priority = Priority_t.HIGH
 context = ssl.create_default_context()
 context.check_hostname = False
 context.verify_mode = ssl.CERT_NONE
+
+cipher_suites = ":".join([
+    "AES256-SHA",          # 0X0035 TLS_RSA_WITH_AES_256_CBC_SHA
+    "AES128-SHA",          # 0X002F TLS_RSA_WITH_AES_128_CBC_SHA
+    "RC4-SHA",             # 0X0005 TLS_RSA_WITH_RC4_128_SHA
+    "RC4-MD5",             # 0X0004 TLS_RSA_WITH_RC4_128_MD5
+    "DES-CBC3-SHA",        # 0X000A TLS_RSA_WITH_3DES_EDE_CBC_SHA
+    "AES256-SHA256"        # 0X003D TLS_RSA_WITH_AES_256_CBC_SHA256
+])
+if SIMULATE_DEVICE_CIPHER_SUIT:
+    context.set_ciphers(cipher_suites)
 # Server details
 host = server_ip  
 port = server_port           
