@@ -89,6 +89,7 @@ avl_data.priority = Priority_t.HIGH
 # Create a default SSL context
 context = ssl.create_default_context()
 context.check_hostname = False
+context.maximum_version = ssl.TLSVersion.TLSv1_2
 context.verify_mode = ssl.CERT_NONE
 
 cipher_suites = ":".join([
